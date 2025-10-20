@@ -88,8 +88,8 @@ describe("fromUnsafe", () => {
   });
 
   it("should handle synchronous errors", async () => {
-    const result = await n.fromUnsafe(() => {
-      throw new Error("Some synchronous error");
+    const result = n.fromUnsafe(() => {
+      if (true as boolean) throw new Error("Some synchronous error");
     });
 
     if (result.success) throw new Error("Result should not be success.");
