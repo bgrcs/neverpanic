@@ -3,6 +3,9 @@
   "module": "index.ts",
   "version": "0.0.4",
   "type": "module",
+  "repository": {
+    "url": "https://github.com/bgrcs/neverpanic"
+  },
   "scripts": {
     "build": "tsc",
     "test": "bun test"
