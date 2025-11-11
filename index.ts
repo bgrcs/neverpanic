@@ -1,9 +1,14 @@
+
+
 export type Result<T = unknown, E = unknown> =
 	| {
 			success: true;
 			data: T;
 	  }
 	| { success: false; error: E };
+
+type DataOf<R extends Result> = R extends { success: true; data: infer D } ? D : never
+type ErrorOf<R extends Result> = R extends { success: false; error: infer E } ? E : never
 
 /**
  * Create a safe function from an unsafe one.
@@ -103,4 +108,22 @@ function fromUnsafe<
 	}
 }
 
-export const n = { safeFn, fromUnsafe };
+function resultsToResult<R extends Result[]>(results: R): Result<DataOf<R[number]>[], ErrorOf<R[number]>[]>  {
+	let success: boolean = true
+	
+	const error: any[] = []
+	const data: any[] = []
+
+	for (const result of results) {
+		if (!result.success) {
+			success = false
+			error.push(result.error)
+		} else {
+			data.push(result.data)
+		}
+	}
+
+	return success ? { success: true, data } : { success: false, error }
+}
+
+export const n = { safeFn, fromUnsafe, resultsToResult };
