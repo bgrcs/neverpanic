@@ -23,4 +23,4 @@ jobs:
       - run: bun fmt
       - run: bun test
       - run: bun run build
-      - run: npm publish
+      - run: npm publish --tag beta
