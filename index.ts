@@ -5,6 +5,16 @@ export type Result<T = unknown, E = unknown> =
     }
   | { success: false; error: E };
 
+const ok = <const T>(data: T): Result<T, never> => ({
+  success: true,
+  data,
+});
+
+const err = <const T>(error: T): Result<never, T> => ({
+  success: false,
+  error,
+});
+
 /**
  * Create a safe function from an unsafe one.
  *
@@ -37,7 +47,7 @@ function safeFn<
 >(
   cb: (...args: A) => T,
   eh?: (e: unknown) => E,
-): (...args: A) => T | Result<never, E> {
+): (...args: A) => T | { success: false; error: E } {
   const createErrorResult = (e: unknown) =>
     ({
       success: false,
@@ -148,4 +158,10 @@ const resultsToResult = <
   };
 };
 
-export const n = { safeFn, fromUnsafe, resultsToResult };
+export const n = {
+  ok,
+  err,
+  safeFn,
+  fromUnsafe,
+  resultsToResult,
+};
