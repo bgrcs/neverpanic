@@ -1,5 +1,11 @@
-import { describe, expect, it } from "bun:test";
-import { n } from ".";
+import {
+  describe,
+  expect,
+  expectTypeOf,
+  it,
+} from "bun:test";
+
+import { n, Result } from ".";
 
 describe("safeFn", () => {
   it("should catch any thrown errors and return success false", async () => {
@@ -13,18 +19,20 @@ describe("safeFn", () => {
   });
 
   it("should call and return the value from the error handler if an error is thrown", async () => {
-    const expectedErrorMessage = "an-unknown-error-occured" as const;
+    const expectedErrorMessage =
+      "an-unknown-error-occured" as const;
 
     const safeFunction = n.safeFn(
       async () => {
         throw new Error("Unexpected error.");
       },
-      () => expectedErrorMessage
+      () => expectedErrorMessage,
     );
 
     const result = await safeFunction();
 
-    if (result.success) throw new Error("Result should not be success.");
+    if (result.success)
+      throw new Error("Result should not be success.");
 
     expect(result.success).toBe(false);
     expect(result.error).toBe(expectedErrorMessage);
@@ -39,7 +47,8 @@ describe("safeFn", () => {
 
     const result = await safeFunction();
 
-    if (!result.success) throw new Error("Result should be success.");
+    if (!result.success)
+      throw new Error("Result should be success.");
 
     expect(result.success).toBe(true);
     expect(result.data).toBe(expectedData);
@@ -54,7 +63,8 @@ describe("safeFn", () => {
 
     const result = await safeFunction();
 
-    if (result.success) throw new Error("Result should not be success.");
+    if (result.success)
+      throw new Error("Result should not be success.");
 
     expect(result.success).toBe(false);
     expect(result.error).toBe(expectedError);
@@ -69,7 +79,8 @@ describe("safeFn", () => {
 
     const result = await safeFunction(expectedName);
 
-    if (!result.success) throw new Error("Result should be success.");
+    if (!result.success)
+      throw new Error("Result should be success.");
 
     expect(result.success).toBe(true);
     expect(result.data).toBe(expectedName);
@@ -81,7 +92,8 @@ describe("fromUnsafe", () => {
     const expectedReturn = "some result";
     const result = await n.fromUnsafe(() => expectedReturn);
 
-    if (!result.success) throw new Error("Result should be success.");
+    if (!result.success)
+      throw new Error("Result should be success.");
 
     expect(result.success).toBe(true);
     expect(result.data).toBe(expectedReturn);
@@ -89,10 +101,12 @@ describe("fromUnsafe", () => {
 
   it("should handle synchronous errors", async () => {
     const result = n.fromUnsafe(() => {
-      if (true as boolean) throw new Error("Some synchronous error");
+      if (true as boolean)
+        throw new Error("Some synchronous error");
     });
 
-    if (result.success) throw new Error("Result should not be success.");
+    if (result.success)
+      throw new Error("Result should not be success.");
 
     expect(result.success).toBe(false);
   });
@@ -102,7 +116,8 @@ describe("fromUnsafe", () => {
       throw new Error("Some synchronous error");
     });
 
-    if (result.success) throw new Error("Result should not be success.");
+    if (result.success)
+      throw new Error("Result should not be success.");
 
     expect(result.success).toBe(false);
   });
@@ -115,7 +130,7 @@ describe("fromUnsafe", () => {
       async () => {
         throw thrownError;
       },
-      (e) => (originalError = e)
+      (e) => (originalError = e),
     );
 
     expect(originalError).toBe(thrownError);
@@ -128,12 +143,109 @@ describe("fromUnsafe", () => {
       async () => {
         throw new Error("Some synchronous error");
       },
-      () => expectedError
+      () => expectedError,
     );
 
-    if (result.success) throw new Error("Result should not be success.");
+    if (result.success)
+      throw new Error("Result should not be success.");
 
     expect(result.success).toBe(false);
     expect(result.error).toBe(expectedError);
+  });
+});
+
+describe("resultsToResult", () => {
+  it("should return success false if a single result is success false", () => {
+    const results = [
+      { success: true, data: "some data" as const },
+      { success: false, error: "SOME_ERROR" as const },
+      {
+        success: false,
+        error: "SOME_OTHER_ERROR" as const,
+      },
+    ] satisfies Result[];
+
+    const result = n.resultsToResult(results);
+
+    if (result.success) {
+      expectTypeOf(result).toMatchObjectType<{
+        success: true;
+        data: {
+          success: true;
+          data: "some data";
+          error?: undefined;
+        }[];
+      }>();
+    }
+
+    if (!result.success) {
+      expectTypeOf(result).toMatchObjectType<{
+        success: false;
+        error: (
+          | {
+              success: false;
+              error: "SOME_ERROR";
+              data?: undefined;
+            }
+          | {
+              success: false;
+              error: "SOME_OTHER_ERROR";
+              data?: undefined;
+            }
+        )[];
+      }>();
+
+      expect(result.success).toBe(false);
+      expect(result.error).toMatchObject([
+        { success: false, error: "SOME_ERROR" as const },
+        {
+          success: false,
+          error: "SOME_OTHER_ERROR" as const,
+        },
+      ]);
+    }
+  });
+
+  it("should return success true if there are no success false results", () => {
+    const results = [
+      { success: true, data: "some data" as const },
+      { success: true, data: "other data" as const },
+    ] satisfies Result[];
+
+    const result = n.resultsToResult(results);
+
+    if (!result.success) {
+      expectTypeOf(result).toMatchObjectType<{
+        success: false;
+        error: never[];
+      }>();
+      throw new Error("Should be success result.");
+    }
+
+    expectTypeOf(result).toMatchObjectType<{
+      success: true;
+      data: (
+        | {
+            success: true;
+            data: "some data";
+          }
+        | {
+            success: true;
+            data: "other data";
+          }
+      )[];
+    }>();
+
+    expect(result.success).toBe(true);
+    expect(result.data).toMatchObject([
+      {
+        success: true,
+        data: "some data",
+      },
+      {
+        success: true,
+        data: "other data",
+      },
+    ]);
   });
 });

@@ -1,14 +1,9 @@
-
-
 export type Result<T = unknown, E = unknown> =
-	| {
-			success: true;
-			data: T;
-	  }
-	| { success: false; error: E };
-
-type DataOf<R extends Result> = R extends { success: true; data: infer D } ? D : never
-type ErrorOf<R extends Result> = R extends { success: false; error: infer E } ? E : never
+  | {
+      success: true;
+      data: T;
+    }
+  | { success: false; error: E };
 
 /**
  * Create a safe function from an unsafe one.
@@ -36,31 +31,31 @@ type ErrorOf<R extends Result> = R extends { success: false; error: infer E } ? 
  * }
  */
 function safeFn<
-	T extends Result | Promise<Result>,
-	A extends unknown[],
-	E = null,
+  T extends Result | Promise<Result>,
+  A extends unknown[],
+  E = null,
 >(
-	cb: (...args: A) => T,
-	eh?: (e: unknown) => E,
+  cb: (...args: A) => T,
+  eh?: (e: unknown) => E,
 ): (...args: A) => T | Result<never, E> {
-	const createErrorResult = (e: unknown) =>
-		({
-			success: false,
-			error: eh?.(e) ?? null,
-		}) as const;
+  const createErrorResult = (e: unknown) =>
+    ({
+      success: false,
+      error: eh?.(e) ?? null,
+    }) as const;
 
-	return (...args) => {
-		try {
-			const result = cb(...args);
+  return (...args) => {
+    try {
+      const result = cb(...args);
 
-			if (result instanceof Promise)
-				return result.catch(createErrorResult) as T;
+      if (result instanceof Promise)
+        return result.catch(createErrorResult) as T;
 
-			return result;
-		} catch (e) {
-			return createErrorResult(e) as T;
-		}
-	};
+      return result;
+    } catch (e) {
+      return createErrorResult(e) as T;
+    }
+  };
 }
 
 /**
@@ -79,51 +74,78 @@ function safeFn<
  * }
  */
 function fromUnsafe<
-	T,
-	E = null,
-	R = T extends Promise<unknown>
-		? Promise<Result<Awaited<T>, E>>
-		: Result<T, E>,
+  T,
+  E = null,
+  R = T extends Promise<unknown>
+    ? Promise<Result<Awaited<T>, E>>
+    : Result<T, E>,
 >(cb: () => T, eh?: (err: unknown) => E): R {
-	const createErrorResult = (e: unknown) => ({
-		success: false,
-		error: eh?.(e) ?? null,
-	});
+  const createErrorResult = (e: unknown) => ({
+    success: false,
+    error: eh?.(e) ?? null,
+  });
 
-	const createSuccessResult = (data: T) =>
-		({
-			success: true,
-			data,
-		}) as const;
+  const createSuccessResult = (data: T) =>
+    ({
+      success: true,
+      data,
+    }) as const;
 
-	try {
-		const result = cb();
+  try {
+    const result = cb();
 
-		if (result instanceof Promise)
-			return result.then(createSuccessResult).catch(createErrorResult) as R;
+    if (result instanceof Promise)
+      return result
+        .then(createSuccessResult)
+        .catch(createErrorResult) as R;
 
-		return createSuccessResult(result) as R;
-	} catch (e) {
-		return createErrorResult(e) as R;
-	}
+    return createSuccessResult(result) as R;
+  } catch (e) {
+    return createErrorResult(e) as R;
+  }
 }
 
-function resultsToResult<R extends Result[]>(results: R): Result<DataOf<R[number]>[], ErrorOf<R[number]>[]>  {
-	let success: boolean = true
-	
-	const error: any[] = []
-	const data: any[] = []
+/**
+ * Convert a list of results into a single result.
+ *
+ * @param results - A list of Results.
+ * @returns A single result containing the data / errors of the input results.
+ *
+ * @example
+ * const findUserResults = userIds.map((userId) =>
+ *   n.fromUnsafe(
+ *     () => db.findUser(userId),
+ *     () => "FAILED_TO_FIND_USER" as const,
+ *   ),
+ * );
+ *
+ * const result = n.resultsToResult(findUserResults)
+ */
+const resultsToResult = <
+  T extends Result[],
+  D extends Extract<T[number], { success: true }>,
+  E extends Extract<T[number], { success: false }>,
+>(
+  results: T,
+): Result<D[], E[]> => {
+  const errors = results.filter(
+    (result): result is E => !result.success,
+  );
 
-	for (const result of results) {
-		if (!result.success) {
-			success = false
-			error.push(result.error)
-		} else {
-			data.push(result.data)
-		}
-	}
+  if (errors.length)
+    return {
+      success: false,
+      error: errors,
+    };
 
-	return success ? { success: true, data } : { success: false, error }
-}
+  const successes = results.filter(
+    (result): result is D => result.success,
+  );
+
+  return {
+    success: true,
+    data: successes,
+  };
+};
 
 export const n = { safeFn, fromUnsafe, resultsToResult };
