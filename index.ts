@@ -46,12 +46,12 @@ function safeFn<
   E = null,
 >(
   cb: (...args: A) => T,
-  eh?: (e: unknown) => E,
+  eh: (e: unknown) => E,
 ): (...args: A) => T | { success: false; error: E } {
   const createErrorResult = (e: unknown) =>
     ({
       success: false,
-      error: eh?.(e) ?? null,
+      error: eh(e),
     }) as const;
 
   return (...args) => {
@@ -89,10 +89,10 @@ function fromUnsafe<
   R = T extends Promise<unknown>
     ? Promise<Result<Awaited<T>, E>>
     : Result<T, E>,
->(cb: () => T, eh?: (err: unknown) => E): R {
+>(cb: () => T, eh: (err: unknown) => E): R {
   const createErrorResult = (e: unknown) => ({
     success: false,
-    error: eh?.(e) ?? null,
+    error: eh(e),
   });
 
   const createSuccessResult = (data: T) =>
