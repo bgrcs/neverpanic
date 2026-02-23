@@ -19,20 +19,23 @@ Create a safe function from an unsafe one:
 
 ```ts
 const getUser = n.safeFn(
-    async (id: string) => {
-        const res = await fetch(`https://example.com/users/${id}`);
-        if (!res.ok) return { success: false, error: "FAILED_TO_FETCH" };
+  async (id: string) => {
+    const res = await fetch(
+      `https://example.com/users/${id}`,
+    );
+    if (!res.ok)
+      return { success: false, error: "FAILED_TO_FETCH" };
 
-        return { success: true, data: await res.json() };
-    },
-    (err) => "FAILED_TO_GET_USER",
+    return { success: true, data: await res.json() };
+  },
+  (err) => "FAILED_TO_GET_USER",
 );
 
 const getUserResult = await getUser("some-user-id");
 if (!getUserResult.success) {
-    console.error(getUserResult.error);
+  console.error(getUserResult.error);
 } else {
-    console.log(getUserResult.data);
+  console.log(getUserResult.data);
 }
 ```
 
@@ -43,12 +46,12 @@ Runs the provided callback function, catching any thrown errors and returning a
 
 ```ts
 const user = await n.fromUnsafe(
-    () => db.findUser("some-user-id"),
-    (err) => "FAILED_T0_FIND_USER",
+  () => db.findUser("some-user-id"),
+  (err) => "FAILED_T0_FIND_USER",
 );
 if (!user.success) {
-    console.error(user.error);
+  console.error(user.error);
 } else {
-    console.log(user.data);
+  console.log(user.data);
 }
 ```

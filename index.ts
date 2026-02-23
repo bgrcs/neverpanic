@@ -1,21 +1,27 @@
-
-
 export type Result<T = unknown, E = unknown> =
-	| {
-			success: true;
-			data: T;
-	  }
-	| { success: false; error: E };
+  | {
+      success: true;
+      data: T;
+    }
+  | { success: false; error: E };
 
-type DataOf<R extends Result> = R extends { success: true; data: infer D } ? D : never
-type ErrorOf<R extends Result> = R extends { success: false; error: infer E } ? E : never
+type DataOf<R extends Result> = R extends {
+  success: true;
+  data: infer D;
+}
+  ? D
+  : never;
+type ErrorOf<R extends Result> = R extends {
+  success: false;
+  error: infer E;
+}
+  ? E
+  : never;
 
 /**
- * Create a safe function from an unsafe one.
+ * Create a typesafe instance of neverpanic.
  *
- * @param cb - The async function to wrap.
- * @param [eh] - Optional fallback error handler.
- * @returns A new function that returns a typesafe Result.
+ * @returns An instance of neverpanic that conforms to the types specified in the generic arguments.
  *
  * @example
  * const getUser = n.safeFn(
@@ -35,95 +41,154 @@ type ErrorOf<R extends Result> = R extends { success: false; error: infer E } ? 
  *   console.log(getUserResult.data);
  * }
  */
-function safeFn<
-	T extends Result | Promise<Result>,
-	A extends unknown[],
-	E = null,
->(
-	cb: (...args: A) => T,
-	eh?: (e: unknown) => E,
-): (...args: A) => T | Result<never, E> {
-	const createErrorResult = (e: unknown) =>
-		({
-			success: false,
-			error: eh?.(e) ?? null,
-		}) as const;
+export const createNeverpanic = <
+  D = unknown,
+  E = unknown,
+>() => {
+  const ok = <const T extends D>(
+    data: T,
+  ): { success: true; data: T } => ({
+    success: true as const,
+    data,
+  });
 
-	return (...args) => {
-		try {
-			const result = cb(...args);
+  const err = <const T extends E>(
+    error: T,
+  ): { success: false; error: T } => ({
+    success: false as const,
+    error,
+  });
 
-			if (result instanceof Promise)
-				return result.catch(createErrorResult) as T;
+  /**
+   * Create a safe function from an unsafe one.
+   *
+   * @param cb - The async function to wrap.
+   * @param [eh] - Optional fallback error handler.
+   * @returns A new function that returns a typesafe Result.
+   *
+   * @example
+   * const getUser = n.safeFn(
+   *   async (id: string) => {
+   *     const res = await fetch(`https://example.com/users/${id}`);
+   *     if (!res.ok) return { success: false, error: "FAILED_TO_FETCH" };
+   *
+   *     return { success: true, data: await res.json() };
+   *   },
+   *   () => "FAILED_TO_GET_USER"
+   * );
+   *
+   * const getUserResult = await getUser("some-user-id");
+   * if (!getUserResult.success) {
+   *   console.error(getUserResult.error);
+   * } else {
+   *   console.log(getUserResult.data);
+   * }
+   */
+  const safeFn =
+    <
+      T extends Result<D, E> | Promise<Result<D, E>>,
+      A extends unknown[],
+      EH extends Result<D, E>,
+    >(
+      cb: (...args: A) => T,
+      eh: (e: unknown) => EH,
+    ): ((...args: A) => T | EH) =>
+    (...args) => {
+      try {
+        const result = cb(...args);
 
-			return result;
-		} catch (e) {
-			return createErrorResult(e) as T;
-		}
-	};
-}
+        if (result instanceof Promise)
+          return result.catch(eh) as T;
 
-/**
- * Run an unsafe function, handle any errors and return a Result.
- *
- * @param cb - The async function to call.
- * @param [eh] - Optional fallback error handler.
- * @returns The awaited return value of cb.
- *
- * @example
- * const user = await n.fromUnsafe(() => db.findUser('some-user-id'), () => 'FAILED_T0_FIND_USER')
- * if (!user.success) {
- * 	console.error(user.error)
- * } else {
- * 	console.log(user.data)
- * }
- */
-function fromUnsafe<
-	T,
-	E = null,
-	R = T extends Promise<unknown>
-		? Promise<Result<Awaited<T>, E>>
-		: Result<T, E>,
->(cb: () => T, eh?: (err: unknown) => E): R {
-	const createErrorResult = (e: unknown) => ({
-		success: false,
-		error: eh?.(e) ?? null,
-	});
+        return result;
+      } catch (e) {
+        return eh(e);
+      }
+    };
 
-	const createSuccessResult = (data: T) =>
-		({
-			success: true,
-			data,
-		}) as const;
+  /**
+   * Run an unsafe function, handle any errors and return a Result.
+   *
+   * @param cb - The async function to call.
+   * @param [eh] - Optional fallback error handler.
+   * @returns The awaited return value of cb.
+   *
+   * @example
+   * const user = await n.fromUnsafe(() => db.findUser('some-user-id'), () => 'FAILED_T0_FIND_USER')
+   * if (!user.success) {
+   * 	console.error(user.error)
+   * } else {
+   * 	console.log(user.data)
+   * }
+   */
+  const fromUnsafe = <
+    T extends D | Promise<D>,
+    EH extends Result<D, E>,
+    R = T extends Promise<infer U>
+      ? Promise<{ success: true; data: U }>
+      : { success: true; data: T },
+  >(
+    cb: () => T,
+    eh: (err: unknown) => EH,
+  ): R | EH => {
+    try {
+      const result = cb();
 
-	try {
-		const result = cb();
+      if (result instanceof Promise)
+        return result.then(ok).catch(eh) as R;
 
-		if (result instanceof Promise)
-			return result.then(createSuccessResult).catch(createErrorResult) as R;
+      return ok(result as D) as R;
+    } catch (e) {
+      return eh(e);
+    }
+  };
 
-		return createSuccessResult(result) as R;
-	} catch (e) {
-		return createErrorResult(e) as R;
-	}
-}
+  /**
+   * Convert a list of results into a single result.
+   *
+   * @param results - A list of Results.
+   * @returns A single result containing the data / errors of the input results.
+   *
+   * @example
+   * const findUserResults = userIds.map((userId) =>
+   *   n.fromUnsafe(
+   *     () => db.findUser(userId),
+   *     () => "FAILED_TO_FIND_USER" as const,
+   *   ),
+   * );
+   *
+   * const result = n.resultsToResult(findUserResults)
+   */
+  const resultsToResult = <R extends Result[]>(
+    results: R,
+  ): Result<DataOf<R[number]>[], ErrorOf<R[number]>[]> => {
+    const errors = results
+      .filter((result) => !result.success)
+      .map((result) => result.error as ErrorOf<R[number]>);
 
-function resultsToResult<R extends Result[]>(results: R): Result<DataOf<R[number]>[], ErrorOf<R[number]>[]>  {
-	let success: boolean = true
-	
-	const error: any[] = []
-	const data: any[] = []
+    if (errors.length)
+      return {
+        success: false,
+        error: errors,
+      };
 
-	for (const result of results) {
-		if (!result.success) {
-			success = false
-			error.push(result.error)
-		} else {
-			data.push(result.data)
-		}
-	}
+    const successes = results
+      .filter((result) => !!result.success)
+      .map((result) => result.data as DataOf<R[number]>);
 
-	return success ? { success: true, data } : { success: false, error }
-}
+    return {
+      success: true,
+      data: successes,
+    };
+  };
 
-export const n = { safeFn, fromUnsafe, resultsToResult };
+  return {
+    ok,
+    err,
+    safeFn,
+    fromUnsafe,
+    resultsToResult,
+  };
+};
+
+export const n = createNeverpanic();
