@@ -194,38 +194,20 @@ describe("resultsToResult", () => {
     if (result.success) {
       expectTypeOf(result).toMatchObjectType<{
         success: true;
-        data: {
-          success: true;
-          data: "some data";
-          error?: undefined;
-        }[];
+        data: "some data"[];
       }>();
     }
 
     if (!result.success) {
       expectTypeOf(result).toMatchObjectType<{
         success: false;
-        error: (
-          | {
-              success: false;
-              error: "SOME_ERROR";
-              data?: undefined;
-            }
-          | {
-              success: false;
-              error: "SOME_OTHER_ERROR";
-              data?: undefined;
-            }
-        )[];
+        error: ("SOME_ERROR" | "SOME_OTHER_ERROR")[];
       }>();
 
       expect(result.success).toBe(false);
       expect(result.error).toMatchObject([
-        { success: false, error: "SOME_ERROR" as const },
-        {
-          success: false,
-          error: "SOME_OTHER_ERROR" as const,
-        },
+        "SOME_ERROR" as const,
+        "SOME_OTHER_ERROR" as const,
       ]);
     }
   });
@@ -248,28 +230,13 @@ describe("resultsToResult", () => {
 
     expectTypeOf(result).toMatchObjectType<{
       success: true;
-      data: (
-        | {
-            success: true;
-            data: "some data";
-          }
-        | {
-            success: true;
-            data: "other data";
-          }
-      )[];
+      data: ("some data" | "other data")[];
     }>();
 
     expect(result.success).toBe(true);
     expect(result.data).toMatchObject([
-      {
-        success: true,
-        data: "some data",
-      },
-      {
-        success: true,
-        data: "other data",
-      },
+      "some data" as const,
+      "other data" as const,
     ]);
   });
 });

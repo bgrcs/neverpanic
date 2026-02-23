@@ -5,6 +5,19 @@ export type Result<T = unknown, E = unknown> =
     }
   | { success: false; error: E };
 
+type DataOf<R extends Result> = R extends {
+  success: true;
+  data: infer D;
+}
+  ? D
+  : never;
+type ErrorOf<R extends Result> = R extends {
+  success: false;
+  error: infer E;
+}
+  ? E
+  : never;
+
 /**
  * Create a typesafe instance of neverpanic.
  *
@@ -146,16 +159,12 @@ export const createNeverpanic = <
    *
    * const result = n.resultsToResult(findUserResults)
    */
-  const resultsToResult = <
-    T extends Result<D, E>[],
-    TD extends Extract<T[number], { success: true }>,
-    TE extends Extract<T[number], { success: false }>,
-  >(
-    results: T,
-  ): Result<TD[], TE[]> => {
-    const errors = results.filter(
-      (result): result is TE => !result.success,
-    );
+  const resultsToResult = <R extends Result[]>(
+    results: R,
+  ): Result<DataOf<R[number]>[], ErrorOf<R[number]>[]> => {
+    const errors = results
+      .filter((result) => !result.success)
+      .map((result) => result.error as ErrorOf<R[number]>);
 
     if (errors.length)
       return {
@@ -163,9 +172,9 @@ export const createNeverpanic = <
         error: errors,
       };
 
-    const successes = results.filter(
-      (result): result is TD => result.success,
-    );
+    const successes = results
+      .filter((result) => !!result.success)
+      .map((result) => result.data as DataOf<R[number]>);
 
     return {
       success: true,
