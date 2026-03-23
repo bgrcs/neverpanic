@@ -10,7 +10,7 @@
     "build": "tsc",
     "test": "bun test"
   },
-  "files": ["dist"],
+  "files": ["dist", "LICENSE"],
   "exports": {
     ".": "./dist/index.js"
   },
