@@ -1,7 +1,7 @@
 {
   "name": "neverpanic",
   "module": "index.ts",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "type": "module",
   "repository": {
     "url": "https://github.com/bgrcs/neverpanic"
@@ -10,7 +10,7 @@
     "build": "tsc",
     "test": "bun test"
   },
-  "files": ["dist"],
+  "files": ["dist", "LICENSE"],
   "exports": {
     ".": "./dist/index.js"
   },
