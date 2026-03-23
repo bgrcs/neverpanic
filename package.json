@@ -1,8 +1,9 @@
 {
   "name": "neverpanic",
   "module": "index.ts",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "type": "module",
+  "license": "MIT",
   "repository": {
     "url": "https://github.com/bgrcs/neverpanic"
   },
