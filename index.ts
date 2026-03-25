@@ -91,18 +91,18 @@ export const createNeverpanic = <
       EH extends Result<D, E>,
     >(
       cb: (...args: A) => T,
-      eh: (e: unknown) => EH,
+      eh: (e: unknown, ...args: A) => EH,
     ): ((...args: A) => T | EH) =>
     (...args) => {
       try {
         const result = cb(...args);
 
         if (result instanceof Promise)
-          return result.catch(eh) as T;
+          return result.catch((e) => eh(e, ...args)) as T;
 
         return result;
       } catch (e) {
-        return eh(e);
+        return eh(e, ...args);
       }
     };
 

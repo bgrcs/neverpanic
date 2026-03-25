@@ -97,6 +97,25 @@ describe("safeFn", () => {
     expect(result.success).toBe(true);
     expect(result.data).toBe(expectedName);
   });
+
+  it("should pass arguments to the error handler", async () => {
+    const expectedName = "Bob";
+    const expectedAge = 30;
+
+    const safeFunction = n.safeFn(
+      async (_name: string, _age: number) => {
+        throw new Error("Unexpected error.");
+      },
+      (_err, name, age) => n.err({ name, age }),
+    );
+
+    const result = await safeFunction(expectedName, expectedAge);
+
+    if (result.success)
+      throw new Error("Result should be failure.");
+
+    expect(result.error).toEqual({ name: expectedName, age: expectedAge });
+  });
 });
 
 describe("fromUnsafe", () => {
