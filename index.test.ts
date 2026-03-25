@@ -109,12 +109,18 @@ describe("safeFn", () => {
       (_err, name, age) => n.err({ name, age }),
     );
 
-    const result = await safeFunction(expectedName, expectedAge);
+    const result = await safeFunction(
+      expectedName,
+      expectedAge,
+    );
 
     if (result.success)
       throw new Error("Result should be failure.");
 
-    expect(result.error).toEqual({ name: expectedName, age: expectedAge });
+    expect(result.error).toEqual({
+      name: expectedName,
+      age: expectedAge,
+    });
   });
 });
 
